@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campusnex_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=campusnex-production-secure-key-2026
+      - DATABASE_URL=sqlite:///./campusnex.db
+      - CAMPUS_CENTER_LAT=12.971598
+      - CAMPUS_CENTER_LNG=77.594562
+    volumes:
+      - ./backend/campusnex.db:/app/campusnex.db
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campusnex_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+

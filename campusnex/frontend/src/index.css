@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #101820;
+    color: #F5F7F4;
+    font-family: 'Inter', 'Manrope', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #101820;
+}
+::-webkit-scrollbar-thumb {
+  background: #2C3B42;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B9F66B;
+}
+
+/* Leaflet Custom Dark Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: #17232B !important;
+  color: #F5F7F4 !important;
+  border: 1px solid #2C3B42 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8) !important;
+  padding: 2px !important;
+}
+.leaflet-popup-tip {
+  background: #17232B !important;
+}
+.leaflet-container {
+  font-family: inherit;
+  background-color: #101820 !important;
+}
+
+/* Dark command-center filter for standard OpenStreetMap tiles (Eliminates API Key errors) */
+.campus-leaflet-container .leaflet-tile-pane .leaflet-layer img {
+  filter: brightness(0.62) invert(1) contrast(2.4) hue-rotate(200deg) saturate(0.28) brightness(0.75);
+}
+
+/* Pulse animation */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(185, 246, 107, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(185, 246, 107, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2.5s infinite;
+}

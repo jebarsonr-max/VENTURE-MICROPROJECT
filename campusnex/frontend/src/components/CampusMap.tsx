@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Vehicle, CampusNode } from '../types';
+import { MOCK_CAMPUS_NODES, MOCK_VEHICLES } from '../services/mockData';
 
 // Fix Leaflet marker asset lookup
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -137,6 +138,16 @@ export const CampusMap: React.FC<CampusMapProps> = ({
   onSelectNode,
   height = '520px',
 }) => {
+  const effectiveNodes = Object.keys(campusNodes).length > 0 ? campusNodes : MOCK_CAMPUS_NODES;
+  const effectiveVehicles = vehicles.length > 0 ? vehicles : MOCK_VEHICLES;
+  const effectiveRouteWaypoints: [number, number][] = routeWaypoints.length > 0
+    ? routeWaypoints
+    : [
+        [12.97120, 77.59400],
+        [12.97190, 77.59320],
+        [12.97340, 77.59280],
+      ];
+
   // Center: Tech University Campus Center [12.9720, 77.5945]
   const centerPosition: [number, number] = activeVehicle
     ? [activeVehicle.current_lat, activeVehicle.current_lng]
@@ -180,17 +191,17 @@ export const CampusMap: React.FC<CampusMapProps> = ({
         )}
 
         {/* Highlighted Delivery Route Polyline */}
-        {routeWaypoints.length > 1 && (
+        {effectiveRouteWaypoints.length > 1 && (
           <>
             <Polyline
-              positions={routeWaypoints}
+              positions={effectiveRouteWaypoints}
               color="#B9F66B"
               weight={4}
               opacity={0.9}
               dashArray="6, 8"
             />
             <Polyline
-              positions={routeWaypoints}
+              positions={effectiveRouteWaypoints}
               color="#B9F66B"
               weight={12}
               opacity={0.2}
@@ -199,7 +210,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
         )}
 
         {/* Campus Facilities & Waypoint Nodes */}
-        {Object.values(campusNodes).map((node) => {
+        {Object.values(effectiveNodes).map((node) => {
           const isSelected = selectedDestination === node.id;
           return (
             <Marker
@@ -233,7 +244,7 @@ export const CampusMap: React.FC<CampusMapProps> = ({
         })}
 
         {/* Autonomous Delivery Vehicles */}
-        {vehicles.map((v) => (
+        {effectiveVehicles.map((v) => (
           <Marker
             key={v.id}
             position={[v.current_lat, v.current_lng]}

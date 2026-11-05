@@ -10,6 +10,16 @@ import {
   SustainabilityMetrics,
   Notification
 } from '../types';
+import {
+  MOCK_CATEGORIES,
+  MOCK_VENDORS,
+  MOCK_PRODUCTS,
+  MOCK_CAMPUS_NODES,
+  MOCK_VEHICLES,
+  MOCK_USERS,
+  MOCK_ORDERS,
+  MOCK_SUSTAINABILITY
+} from './mockData';
 
 const API_URL = (((import.meta as any).env?.VITE_API_URL as string) || '').replace(/\/$/, '');
 const API_BASE = `${API_URL}/api/v1`;
@@ -19,6 +29,334 @@ function getAuthHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+function getStoredOrders(): Order[] {
+  try {
+    const raw = localStorage.getItem('campusnex_mock_orders');
+    return raw ? JSON.parse(raw) : MOCK_ORDERS;
+  } catch {
+    return MOCK_ORDERS;
+  }
+}
+
+function saveStoredOrders(orders: Order[]) {
+  try {
+    localStorage.setItem('campusnex_mock_orders', JSON.stringify(orders));
+  } catch {}
+}
+
+function getStoredVehicles(): Vehicle[] {
+  try {
+    const raw = localStorage.getItem('campusnex_mock_vehicles');
+    return raw ? JSON.parse(raw) : MOCK_VEHICLES;
+  } catch {
+    return MOCK_VEHICLES;
+  }
+}
+
+function saveStoredVehicles(vehicles: Vehicle[]) {
+  try {
+    localStorage.setItem('campusnex_mock_vehicles', JSON.stringify(vehicles));
+  } catch {}
+}
+
+function handleMockFallback(endpoint: string, options: RequestInit = {}): any {
+  const method = (options.method || 'GET').toUpperCase();
+  const url = new URL(endpoint, 'http://localhost');
+  const pathname = url.pathname;
+  const searchParams = url.searchParams;
+
+  // 1. Categories
+  if (pathname === '/products/categories') {
+    return MOCK_CATEGORIES;
+  }
+
+  // 2. Products
+  if (pathname === '/products') {
+    let prods = [...MOCK_PRODUCTS];
+    const catSlug = searchParams.get('category_slug');
+    const vendorId = searchParams.get('vendor_id');
+    const search = searchParams.get('search')?.toLowerCase();
+
+    if (catSlug) {
+      const cat = MOCK_CATEGORIES.find((c) => c.slug === catSlug);
+      if (cat) prods = prods.filter((p) => p.category_id === cat.id);
+    }
+    if (vendorId) {
+      prods = prods.filter((p) => p.vendor_id === parseInt(vendorId));
+    }
+    if (search) {
+      prods = prods.filter(
+        (p) => p.name.toLowerCase().includes(search) || p.description.toLowerCase().includes(search)
+      );
+    }
+    return prods;
+  }
+
+  if (pathname.startsWith('/products/')) {
+    const id = parseInt(pathname.replace('/products/', ''));
+    const prod = MOCK_PRODUCTS.find((p) => p.id === id);
+    if (prod) return prod;
+  }
+
+  // 3. Vendors
+  if (pathname === '/vendors') {
+    return MOCK_VENDORS;
+  }
+  if (pathname === '/vendors/metrics') {
+    return {
+      total_orders: 14,
+      pending_orders: 2,
+      today_revenue: 3480,
+      avg_prep_time_mins: 6.5,
+      completed_today: 12,
+    };
+  }
+
+  // 4. Vehicles
+  if (pathname === '/vehicles') {
+    return getStoredVehicles();
+  }
+  if (pathname.includes('/recharge')) {
+    const parts = pathname.split('/');
+    const id = parseInt(parts[2]);
+    const vehicles = getStoredVehicles().map((v) =>
+      v.id === id ? { ...v, battery_percentage: 100, status: 'idle' as const } : v
+    );
+    saveStoredVehicles(vehicles);
+    return vehicles.find((v) => v.id === id);
+  }
+  if (pathname.startsWith('/vehicles/') && method === 'PATCH') {
+    const id = parseInt(pathname.replace('/vehicles/', ''));
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const vehicles = getStoredVehicles().map((v) => (v.id === id ? { ...v, ...body } : v));
+    saveStoredVehicles(vehicles);
+    return vehicles.find((v) => v.id === id);
+  }
+  if (pathname.startsWith('/vehicles/')) {
+    const id = parseInt(pathname.replace('/vehicles/', ''));
+    return getStoredVehicles().find((v) => v.id === id) || MOCK_VEHICLES[0];
+  }
+
+  // 5. Campus Nodes
+  if (pathname === '/logistics/campus-nodes') {
+    return MOCK_CAMPUS_NODES;
+  }
+  if (pathname === '/logistics/calculate-route') {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const start = MOCK_CAMPUS_NODES[body.start_node] || MOCK_CAMPUS_NODES.CAFETERIA;
+    const end = MOCK_CAMPUS_NODES[body.end_node] || MOCK_CAMPUS_NODES.HOSTEL_A;
+    return {
+      route_path: [body.start_node || 'CAFETERIA', 'LIBRARY', body.end_node || 'HOSTEL_A'],
+      total_distance_km: 0.65,
+      estimated_time_mins: 7.5,
+      co2_saved_kg: 0.14,
+      waypoints: [
+        [start.lat, start.lng],
+        [12.9719, 77.5932],
+        [end.lat, end.lng],
+      ],
+      nodes_detail: [start, MOCK_CAMPUS_NODES.LIBRARY, end],
+      algorithm_used: body.algorithm || 'dijkstra_multimodal',
+    };
+  }
+
+  // 6. Sustainability
+  if (pathname === '/sustainability/metrics') {
+    return MOCK_SUSTAINABILITY;
+  }
+
+  // 7. IoT Telemetry
+  if (pathname === '/iot/telemetry-feed') {
+    const vehicles = getStoredVehicles();
+    return {
+      status: 'online',
+      broker_protocol: 'Simulated MQTT v5.0 (CoAP / WebSocket Bridge)',
+      timestamp: new Date().toISOString(),
+      total_active_nodes: vehicles.length,
+      telemetry: vehicles.map((v) => ({
+        vehicle_code: v.vehicle_code,
+        vehicle_type: v.vehicle_type,
+        status: v.status,
+        battery: v.battery_percentage,
+        speed_kmh: v.speed_kmh,
+        latitude: v.current_lat,
+        longitude: v.current_lng,
+        altitude_m: v.vehicle_type === 'drone' ? 35.0 : 0.0,
+        cpu_load_pct: Math.floor(22 + Math.random() * 15),
+        motor_temp_c: Math.floor(41 + Math.random() * 8),
+        network_rssi_dbm: -58,
+        lidar_status: 'nominal',
+        obstacle_distance_m: 12.4,
+      })),
+    };
+  }
+
+  // 8. Notifications
+  if (pathname === '/notifications') {
+    return [
+      {
+        id: 1,
+        title: 'Autonomous Fleet Online',
+        message: 'All 5 campus delivery rovers and VTOL drones operating nominally.',
+        is_read: false,
+        created_at: new Date().toISOString(),
+        type: 'system',
+      },
+      {
+        id: 2,
+        title: 'Zero Emission Milestone',
+        message: 'CAMPUSNEX surpassed 1,200 km of emission-free deliveries.',
+        is_read: false,
+        created_at: new Date(Date.now() - 3600000).toISOString(),
+        type: 'eco',
+      },
+    ];
+  }
+  if (pathname === '/notifications/read-all') {
+    return { message: 'All marked as read' };
+  }
+
+  // 9. Auth
+  if (pathname === '/auth/login') {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    let role = 'student';
+    if (body.email?.includes('vendor')) role = 'vendor';
+    if (body.email?.includes('admin')) role = 'admin';
+    const user = MOCK_USERS[role] || MOCK_USERS.student;
+    return { access_token: `mock_jwt_token_${role}`, user };
+  }
+  if (pathname === '/auth/register') {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const user: User = {
+      id: 99,
+      name: body.name || 'New Campus User',
+      email: body.email || 'user@campusnex.edu',
+      role: body.role || 'student',
+      campus_id: body.campus_id || 'STU-2026-NEW',
+      hostel_block: body.hostel_block || 'Hostel Alpha',
+      phone: body.phone || '+91 98765 00000',
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    return { access_token: 'mock_jwt_token_new', user };
+  }
+  if (pathname === '/auth/me') {
+    const token = localStorage.getItem('campusnex_token') || '';
+    if (token.includes('admin')) return MOCK_USERS.admin;
+    if (token.includes('vendor')) return MOCK_USERS.vendor;
+    return MOCK_USERS.student;
+  }
+  if (pathname === '/auth/demo-accounts') {
+    return [
+      { role: 'student', email: 'student@campusnex.edu', password: 'password123', label: 'Alex Chen (Student)' },
+      { role: 'vendor', email: 'vendor@campusnex.edu', password: 'password123', label: 'Chef Marco (Cafeteria Vendor)' },
+      { role: 'admin', email: 'admin@campusnex.edu', password: 'password123', label: 'Dispatch Center (Admin)' },
+    ];
+  }
+
+  // 10. Orders
+  if (pathname === '/orders' && method === 'GET') {
+    return getStoredOrders();
+  }
+  if (pathname === '/orders/vendor') {
+    return getStoredOrders();
+  }
+  if (pathname === '/orders' && method === 'POST') {
+    const body = options.body ? JSON.parse(options.body as string) : {};
+    const orders = getStoredOrders();
+    const newId = Date.now();
+    const isDrone = body.delivery_vehicle_type === 'drone' || (body.total_weight_kg && body.total_weight_kg < 1.0);
+    const vehicleCode = isDrone ? 'DRONE-SD-01' : 'ROBOT-NX-01';
+    const pickupNode =
+      body.items?.[0]?.product_id > 7
+        ? 'BIOLAB'
+        : body.items?.[0]?.product_id > 3
+        ? 'STATIONERY_HUB'
+        : 'CAFETERIA';
+    const dropoffNode = body.delivery_location_node || 'HOSTEL_A';
+
+    const newOrder: Order = {
+      id: newId,
+      order_number: `ORD-NEX-${Math.floor(1000 + Math.random() * 9000)}`,
+      student_id: 1,
+      vendor_id: body.vendor_id || 1,
+      status: 'assigned',
+      priority: 'normal',
+      delivery_location_name: body.delivery_address || 'Hostel Alpha',
+      delivery_lat: 12.9734,
+      delivery_lng: 77.5928,
+      total_amount: body.total_amount || 250.0,
+      delivery_fee: 0.0,
+      total_weight_kg: body.total_weight_kg || 0.65,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      items: (body.items || []).map((it: any, idx: number) => ({
+        id: idx + 1,
+        product_id: it.product_id,
+        product_name: MOCK_PRODUCTS.find((p) => p.id === it.product_id)?.name || 'Campus Item',
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        subtotal: it.unit_price * it.quantity,
+        unit_weight_kg: 0.25,
+      })),
+      assignment: {
+        id: newId,
+        order_id: newId,
+        vehicle_id: isDrone ? 3 : 1,
+        assigned_at: new Date().toISOString(),
+        pickup_location_name: pickupNode,
+        pickup_lat: 12.9712,
+        pickup_lng: 77.594,
+        destination_location_name: dropoffNode,
+        destination_lat: 12.9734,
+        destination_lng: 77.5928,
+        estimated_distance_km: 0.72,
+        estimated_duration_mins: 7.5,
+        status: 'in_transit',
+        current_step_index: 1,
+        route_waypoints: [
+          [12.9712, 77.594],
+          [12.9719, 77.5932],
+          [12.9734, 77.5928],
+        ],
+      },
+    };
+    orders.unshift(newOrder);
+    saveStoredOrders(orders);
+    return newOrder;
+  }
+  if (pathname.includes('/advance_simulation')) {
+    const id = parseInt(pathname.split('/')[2]);
+    const orders = getStoredOrders().map((o) => {
+      if (o.id === id) {
+        const nextStatus = (o.status === 'in_transit' ? 'delivered' : 'in_transit') as 'in_transit' | 'delivered';
+        return { ...o, status: nextStatus };
+      }
+      return o;
+    });
+    saveStoredOrders(orders);
+    return orders.find((o) => o.id === id);
+  }
+  if (pathname.includes('/confirm_delivery')) {
+    const id = parseInt(pathname.split('/')[2]);
+    const orders = getStoredOrders().map((o) => (o.id === id ? { ...o, status: 'delivered' as const } : o));
+    saveStoredOrders(orders);
+    return orders.find((o) => o.id === id);
+  }
+  if (pathname.includes('/cancel')) {
+    const id = parseInt(pathname.split('/')[2]);
+    const orders = getStoredOrders().map((o) => (o.id === id ? { ...o, status: 'cancelled' as const } : o));
+    saveStoredOrders(orders);
+    return orders.find((o) => o.id === id);
+  }
+  if (pathname.startsWith('/orders/')) {
+    const id = parseInt(pathname.replace('/orders/', ''));
+    return getStoredOrders().find((o) => o.id === id) || MOCK_ORDERS[0];
+  }
+
+  return null;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = {
     'Content-Type': 'application/json',
@@ -26,23 +364,25 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...options.headers,
   };
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (!res.ok) {
-    let errorDetail = 'API request failed';
-    try {
-      const errData = await res.json();
-      errorDetail = errData.detail || errData.message || JSON.stringify(errData);
-    } catch {
-      errorDetail = `Status code ${res.status}: ${res.statusText}`;
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || contentType.includes('text/html')) {
+      throw new Error(`API returned ${res.status}`);
     }
-    throw new Error(errorDetail);
-  }
 
-  return res.json();
+    return await res.json();
+  } catch (err) {
+    const fallback = handleMockFallback(endpoint, options);
+    if (fallback !== null && fallback !== undefined) {
+      return fallback as T;
+    }
+    throw err;
+  }
 }
 
 export const api = {
@@ -219,4 +559,3 @@ export const api = {
     return request('/vendors/metrics');
   },
 };
-

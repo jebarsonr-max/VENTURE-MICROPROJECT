@@ -204,12 +204,12 @@ export const LogisticsEnginePage: React.FC = () => {
               <div className="space-y-2">
                 <div className="text-xs font-bold text-campus-text">Waypoint Graph Sequence</div>
                 <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
-                  {result.path_nodes.map((n, idx) => (
+                  {(result.path_nodes || []).map((n, idx) => (
                     <React.Fragment key={n}>
                       <span className="px-2 py-1 rounded bg-campus-elevated border border-campus-border text-campus-text">
                         {nodes[n]?.name || n}
                       </span>
-                      {idx < result.path_nodes.length - 1 && (
+                      {idx < (result.path_nodes || []).length - 1 && (
                         <ArrowRight className="w-3.5 h-3.5 text-campus-accent shrink-0" />
                       )}
                     </React.Fragment>
@@ -221,7 +221,7 @@ export const LogisticsEnginePage: React.FC = () => {
               <div className="space-y-2">
                 <div className="text-xs font-bold text-campus-text">State Space Exploration Trace</div>
                 <div className="max-h-44 overflow-y-auto space-y-1.5 p-3 rounded-2xl bg-campus-bg font-mono text-[10px] text-campus-muted border border-campus-border scrollbar-thin">
-                  {result.steps_log.map((step, idx) => (
+                  {(result.steps_log || []).map((step, idx) => (
                     <div key={idx} className="flex justify-between border-b border-campus-border/30 pb-1">
                       <span className="text-campus-text font-bold">
                         {step.node_name || step.event || `Step ${idx + 1}`}

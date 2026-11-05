@@ -261,6 +261,78 @@ export const MOCK_CAMPUS_NODES: Record<string, CampusNode> = {
     elevation_m: 916.0,
     type: "infrastructure",
     description: "Robotic fleet charging pads, telemetry server, and drone vertipad"
+  },
+  food_court: {
+    id: "food_court",
+    name: "Central Food Court & Cafeteria",
+    lat: 12.97120,
+    lng: 77.59400,
+    elevation_m: 910,
+    type: "vendor",
+    description: "Primary dining hall and hot food preparation hub"
+  },
+  central_library: {
+    id: "central_library",
+    name: "Dr. Kalam Central Library",
+    lat: 12.97250,
+    lng: 77.59380,
+    elevation_m: 912,
+    type: "academic",
+    description: "Multi-floor study center, book repository, and quiet zone"
+  },
+  science_labs: {
+    id: "science_labs",
+    name: "Bio-Tech & Chemistry Complex",
+    lat: 12.97380,
+    lng: 77.59520,
+    elevation_m: 914,
+    type: "lab",
+    description: "Hazardous lab reagent and precision equipment pickup bay"
+  },
+  engineering_block: {
+    id: "engineering_block",
+    name: "Turing Engineering & Robotics Quad",
+    lat: 12.97020,
+    lng: 77.59550,
+    elevation_m: 910,
+    type: "academic",
+    description: "Computer science, electronics labs, and hardware fabrication"
+  },
+  hostel_alpha: {
+    id: "hostel_alpha",
+    name: "Hostel Alpha (North Wing)",
+    lat: 12.97450,
+    lng: 77.59250,
+    elevation_m: 915,
+    type: "residential",
+    description: "Undergraduate residential residence - Block A"
+  },
+  hostel_beta: {
+    id: "hostel_beta",
+    name: "Hostel Beta (West Wing)",
+    lat: 12.96920,
+    lng: 77.59200,
+    elevation_m: 908,
+    type: "residential",
+    description: "Senior student residence & graduate suites"
+  },
+  drone_vertiport: {
+    id: "drone_vertiport",
+    name: "Campus SkyDock & Drone Vertiport",
+    lat: 12.97320,
+    lng: 77.59780,
+    elevation_m: 925,
+    type: "infrastructure",
+    description: "Automated drone battery swap stations and aerial dispatch tower"
+  },
+  stationer_hub: {
+    id: "stationer_hub",
+    name: "Campus Stationery & Print Press",
+    lat: 12.97080,
+    lng: 77.59320,
+    elevation_m: 910,
+    type: "vendor",
+    description: "Printing, architectural drafting supplies, and stationery"
   }
 };
 

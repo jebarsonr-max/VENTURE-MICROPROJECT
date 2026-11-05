@@ -143,20 +143,42 @@ function handleMockFallback(endpoint: string, options: RequestInit = {}): any {
   }
   if (pathname === '/logistics/calculate-route') {
     const body = options.body ? JSON.parse(options.body as string) : {};
-    const start = MOCK_CAMPUS_NODES[body.start_node] || MOCK_CAMPUS_NODES.CAFETERIA;
-    const end = MOCK_CAMPUS_NODES[body.end_node] || MOCK_CAMPUS_NODES.HOSTEL_A;
+    const startKey = body.start_node || 'food_court';
+    const endKey = body.end_node || 'hostel_alpha';
+    const start = MOCK_CAMPUS_NODES[startKey] || MOCK_CAMPUS_NODES.food_court || MOCK_CAMPUS_NODES.CAFETERIA;
+    const end = MOCK_CAMPUS_NODES[endKey] || MOCK_CAMPUS_NODES.hostel_alpha || MOCK_CAMPUS_NODES.HOSTEL_A;
+    const isDrone = body.vehicle_type === 'drone';
+    const algoName = isDrone ? 'Direct 3D Flight Corridor' : (body.algorithm === 'astar' ? 'A* Heuristic Search' : "Dijkstra's Shortest Path");
+
+    const midPoint: [number, number] = [
+      (start.lat + end.lat) / 2 + 0.0003,
+      (start.lng + end.lng) / 2 - 0.0002,
+    ];
+
+    const dist = isDrone ? 0.48 : 0.65;
+    const duration = isDrone ? 3.2 : 6.8;
+
     return {
-      route_path: [body.start_node || 'CAFETERIA', 'LIBRARY', body.end_node || 'HOSTEL_A'],
-      total_distance_km: 0.65,
-      estimated_time_mins: 7.5,
-      co2_saved_kg: 0.14,
+      start_node: startKey,
+      end_node: endKey,
+      vehicle_type: isDrone ? 'drone' : 'robot',
+      algorithm: algoName,
+      total_distance_km: dist,
+      estimated_duration_mins: duration,
+      path_nodes: [startKey, 'central_library', endKey],
       waypoints: [
         [start.lat, start.lng],
-        [12.9719, 77.5932],
+        midPoint,
         [end.lat, end.lng],
       ],
-      nodes_detail: [start, MOCK_CAMPUS_NODES.LIBRARY, end],
-      algorithm_used: body.algorithm || 'dijkstra_multimodal',
+      steps_log: [
+        { node_name: `Origin: ${start.name}`, cumulative_dist_km: 0.0, event: 'Initialized Start Node' },
+        { node_name: `Waypoint: Central Campus Node`, cumulative_dist_km: 0.28, event: 'Traversal via Paved Campus Walkway' },
+        { node_name: `Goal: ${end.name}`, cumulative_dist_km: dist, event: 'Optimal Path Found (Cost Minimized)' },
+      ],
+      explanation: isDrone
+        ? `Direct 3D UAV Air Corridor calculated between ${start.name} and ${end.name}. Bypasses surface pedestrian traffic at 45m AGL.`
+        : `Optimal path computed using ${algoName}. Traverses campus paved ground walkways with zero collision probability.`,
     };
   }
 
@@ -169,25 +191,37 @@ function handleMockFallback(endpoint: string, options: RequestInit = {}): any {
   if (pathname === '/iot/telemetry-feed') {
     const vehicles = getStoredVehicles();
     return {
-      status: 'online',
+      status: 'ONLINE',
       broker_protocol: 'Simulated MQTT v5.0 (CoAP / WebSocket Bridge)',
       timestamp: new Date().toISOString(),
       total_active_nodes: vehicles.length,
-      telemetry: vehicles.map((v) => ({
-        vehicle_code: v.vehicle_code,
-        vehicle_type: v.vehicle_type,
-        status: v.status,
-        battery: v.battery_percentage,
-        speed_kmh: v.speed_kmh,
-        latitude: v.current_lat,
-        longitude: v.current_lng,
-        altitude_m: v.vehicle_type === 'drone' ? 35.0 : 0.0,
-        cpu_load_pct: Math.floor(22 + Math.random() * 15),
-        motor_temp_c: Math.floor(41 + Math.random() * 8),
-        network_rssi_dbm: -58,
-        lidar_status: 'nominal',
-        obstacle_distance_m: 12.4,
-      })),
+      telemetry: vehicles.map((v) => {
+        const isDrone = v.vehicle_type === 'drone';
+        const isDelivering = v.status === 'delivering' || v.status === 'en_route_pickup';
+        return {
+          vehicle_id: v.id,
+          vehicle_code: v.vehicle_code,
+          vehicle_type: v.vehicle_type,
+          model_name: v.model_name,
+          status: v.status,
+          battery_percentage: Math.round(v.battery_percentage),
+          speed_kmh: v.speed_kmh,
+          lat: v.current_lat,
+          lng: v.current_lng,
+          current_altitude_m: isDrone ? 35.0 : 0.0,
+          sensors: {
+            core_temp_c: Math.round((isDelivering ? 34.5 : 28.2 + Math.random() * 2) * 10) / 10,
+            vibration_g: isDrone ? 0.08 : isDelivering ? 0.42 : 0.04,
+            network_latency_ms: Math.floor(18 + Math.random() * 12),
+            rssi_dbm: Math.floor(-64 + Math.random() * 6),
+            lidar_status: isDrone ? 'ALTITUDE_SONAR_LOCKED (35m AGL)' : 'NORMAL_OK (LiDAR Surface Mesh Locked)',
+            imu_pitch_deg: 0.4,
+            imu_roll_deg: -0.2,
+            gps_satellites_locked: Math.floor(16 + Math.random() * 4),
+          },
+          last_heartbeat: new Date().toISOString(),
+        };
+      }),
     };
   }
 

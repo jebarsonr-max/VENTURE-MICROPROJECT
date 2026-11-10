@@ -24,6 +24,42 @@ import {
 const API_URL = (((import.meta as any).env?.VITE_API_URL as string) || '').replace(/\/$/, '');
 const API_BASE = `${API_URL}/api/v1`;
 
+let isBackendOnline: boolean | null = null;
+let lastCheckTime = 0;
+
+// Probes backend with a strict 800ms abort timeout so it never hangs or lags the UI
+async function probeBackend(): Promise<boolean> {
+  if (!API_URL && typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    isBackendOnline = false;
+    return false;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 800);
+    const res = await fetch(`${API_BASE}/products/categories`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      isBackendOnline = true;
+      lastCheckTime = Date.now();
+      return true;
+    }
+  } catch {
+    // Backend offline / unreachable
+  }
+  isBackendOnline = false;
+  lastCheckTime = Date.now();
+  return false;
+}
+
+if (typeof window !== 'undefined') {
+  probeBackend();
+}
+
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('campusnex_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -392,6 +428,17 @@ function handleMockFallback(endpoint: string, options: RequestInit = {}): any {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  // If backend is known to be offline (standalone demo mode on Vercel), return in-memory mock immediately with 0ms delay!
+  if (isBackendOnline === false) {
+    if (Date.now() - lastCheckTime > 60000) {
+      probeBackend();
+    }
+    const fallback = handleMockFallback(endpoint, options);
+    if (fallback !== null && fallback !== undefined) {
+      return fallback as T;
+    }
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     ...getAuthHeader(),
@@ -399,18 +446,29 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   };
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+
     const res = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     const contentType = res.headers.get('content-type') || '';
     if (!res.ok || contentType.includes('text/html')) {
+      isBackendOnline = false;
+      lastCheckTime = Date.now();
       throw new Error(`API returned ${res.status}`);
     }
 
+    isBackendOnline = true;
+    lastCheckTime = Date.now();
     return await res.json();
   } catch (err) {
+    isBackendOnline = false;
+    lastCheckTime = Date.now();
     const fallback = handleMockFallback(endpoint, options);
     if (fallback !== null && fallback !== undefined) {
       return fallback as T;

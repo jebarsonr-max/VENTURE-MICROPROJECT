@@ -48,7 +48,7 @@ export const IoTMonitoringPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
+
       {/* Header & Protocol Status */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -66,11 +66,10 @@ export const IoTMonitoringPage: React.FC = () => {
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center space-x-1.5 transition ${
-              autoRefresh
+            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center space-x-1.5 transition ${autoRefresh
                 ? 'bg-campus-elevated border-campus-accent text-campus-accent'
                 : 'bg-campus-card border-campus-border text-campus-muted'
-            }`}
+              }`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${autoRefresh ? 'animate-spin' : ''}`} />
             <span>Auto-Stream {autoRefresh ? 'ON' : 'PAUSED'}</span>
@@ -106,11 +105,10 @@ export const IoTMonitoringPage: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-                    isDrone
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${isDrone
                       ? 'bg-campus-elevated border-campus-accent-subtle text-campus-accent-subtle'
                       : 'bg-campus-elevated border-campus-accent text-campus-accent'
-                  }`}>
+                    }`}>
                     {isDrone ? <Plane className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
                   </div>
                   <div>
@@ -119,11 +117,10 @@ export const IoTMonitoringPage: React.FC = () => {
                   </div>
                 </div>
 
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
-                  isDelivering
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${isDelivering
                     ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-800 animate-pulse'
                     : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
-                }`}>
+                  }`}>
                   {node.status}
                 </span>
               </div>
